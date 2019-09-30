@@ -65,7 +65,7 @@ async function submit_problem(submit) {
     password = cred.password;
   }
 
-  const browser = await puppeteer.launch({headless: false});
+  const browser = await puppeteer.launch();
   const page = await browser.newPage();
   const url = 'https://codeforces.com/enter';
   console.warn(`openning ${url} ...`);
