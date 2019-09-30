@@ -22,7 +22,7 @@ async function clone_contest(number) {
   await page.goto(url);
   const ids = await page.evaluate(() => {
     const ids = document.querySelectorAll('table.problems tr td.id')
-    return [].map.call(ids, id => id.textContent.trim());
+    return [].map.call(ids, id => id.textContent.trim().toLowerCase());
   });
   console.warn(`Found ${ids.length} problems : ${ids.join(', ')}`);
   for(let id of ids) {
@@ -143,34 +143,26 @@ async function submit_problem(submit) {
 
 function write_question({inputs, outputs, url, id}) {
 let template = `// ${url}
-macro_rules! input {
-    ($s:expr, $($r:tt)*) => {
-        let mut iter = $s.split_whitespace();
-        input_inner!{iter, $($r)*}
-    };
-}
-
-macro_rules! input_inner {
+macro_rules! input{
     ($iter:expr) => {};
-    ($iter:expr, ) => {};
+    ($iter:expr,) => {};
+    (src = $s:expr, $($r:tt)*) => {
+        let mut iter = $s.split_whitespace();
+        input!{iter, $($r)*}
+    };
     ($iter:expr, $var:ident : $t:tt $($r:tt)*) => {
         let $var = read_value!($iter, $t);
-        input_inner!{$iter $($r)*}
+        input!{$iter $($r)*}
     };
 }
-
 macro_rules! read_value {
-    ($iter:expr, ( $($t:tt),* )) => {
-        ( $(read_value!($iter, $t)),* )
-    };
-    ($iter:expr, [ $t:tt ; $len:expr ]) => {
+    ($iter:expr, ($($t:tt),* )) => { ( $(read_value!($iter, $t)),* ) };
+    ($iter:expr, [$t:tt;]) => { read_value!($iter, [$t; read_value!($iter, usize)]) };
+    ($iter:expr, [$t:tt;$len:expr]) => {
         (0..$len).map(|_| read_value!($iter, $t)).collect::<Vec<_>>()
     };
     ($iter:expr, chars) => {
         read_value!($iter, String).chars().collect::<Vec<char>>()
-    };
-    ($iter:expr, usize1) => {
-        read_value!($iter, usize) - 1
     };
     ($iter:expr, $t:ty) => {
         $iter.next().unwrap().parse::<$t>().expect("Parse error")
@@ -183,7 +175,7 @@ use std::io::BufWriter;
 
 fn run(out : &mut BufWriter<impl Write>, src: &str) {
     input! {
-        src,
+        src = src,
     }
     // writeln!(out, "{}", result).unwrap();
 }
