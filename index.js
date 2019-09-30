@@ -1,6 +1,10 @@
+#!/usr/bin/env node
 const puppeteer       = require('puppeteer');
 const commandLineArgs = require('command-line-args')
 const fs              = require('fs');
+const { join, resolve } = require("path");
+const readline = require("readline-sync");
+const execSync = require("child_process").execSync;
 
 // cs -c 1221                   # clone contest 1221
 // cs -s a                      # submit solution a
@@ -48,12 +52,85 @@ async function clone_contest(number) {
   await browser.close();
 }
 
+async function submit_problem(submit) {
+  let username, password;
+  const cred_file = join(__dirname, "cred");
+  if (!fs.existsSync(cred_file)) {
+    username = readline.question("username : ");
+    password = readline.question("password : ", { hideEchoBack: true });
+  } else {
+    const cred_json = fs.readFileSync(cred_file, "utf8");
+    const cred = JSON.parse(cred_json);
+    username = cred.username;
+    password = cred.password;
+  }
+
+  const browser = await puppeteer.launch({headless: false});
+  const page = await browser.newPage();
+  const url = 'https://codeforces.com/enter';
+  console.warn(`openning ${url} ...`);
+  await page.goto(url);
+  await page.$eval('#handleOrEmail', (el, v) => (el.value = v), username);
+  await page.$eval('#password', (el, v) => (el.value = v), password);
+  await page.click('input[type="submit"]');
+  await page.waitForSelector(`a[href$="${username}"]`);
+  fs.writeFileSync(cred_file, JSON.stringify({ username, password }));
+
+  const file_path = resolve(submit);
+  const suburl = fs.readFileSync(file_path, "utf8").split('\n')[0].replace(/^\/\/\s*/, '');
+  console.warn(`openning ${suburl} ...`);
+  await page.goto(suburl);
+  await page.waitForSelector('input[name="sourceFile"]');
+  await page.$eval('select[name="programTypeId"]', (el) => (el.value = "49"));
+  const input = await page.$('input[name="sourceFile"]');
+  await input.uploadFile(file_path);
+
+  console.warn(`submitting ${submit} ...`);
+  await page.click('form.submitForm input[type=submit]');
+  await page.waitForSelector('table tr[data-submission-id], .error');
+
+  const error = await page.evaluate(() => {
+    const error = document.querySelector('.error');
+    return error && error.textContent;
+  });
+  if(error) {
+      console.log(`\x1b[31m${error}`);
+      await browser.close();
+      return;
+  }
+
+
+  while(1) {
+    const data = await page.evaluate(() => {
+        const trs = Array.from(document.querySelectorAll('table tr[data-submission-id]'));
+        const data = {};
+        trs.map(tr => {
+            const tds = Array.from(tr.querySelectorAll('td'));
+            const [id, when, _who, problem, lang, verdict, time, memory] = tds.map(td => td.textContent.trim());
+            data[id] = { when, problem, lang, verdict, time, memory };
+        });
+        return data;
+    });
+    console.table(data);
+    const is_running = 
+          JSON.stringify(data).indexOf('queue') !== -1 ||
+          JSON.stringify(data).indexOf('Running') !== -1;
+    if(is_running) { 
+      execSync("sleep 1");
+      // await page.reload();
+    } else {
+      await browser.close();
+      return;
+    }
+  }
+}
+
 
 (async () => {
   if (options.contest) {
     await clone_contest(options.contest);
   } else if(options.submit) {
-    console.warn("TODO: submit", contest.submit);
+    await submit_problem(options.submit);
   } else {
     console.warn(`EROOR, USEAGE ↓
       cs -c 1221  # clone contest 1221
