@@ -34,8 +34,14 @@ async function clone_contest(number) {
         const inputs  = document.querySelectorAll('.sample-test .input pre');
         const outputs = document.querySelectorAll('.sample-test .output pre');
         return {
-            inputs : [].map.call(inputs, id => id.textContent.trim()),
-            outputs: [].map.call(outputs, id => id.textContent.trim()),
+            inputs : [].map.call(
+              inputs,
+              pre => [].map.call(
+                pre.querySelectorAll('div'),
+                div => div.textContent.trim()
+              ).join('\n')
+            ),
+            outputs: [].map.call(outputs, pre => pre.textContent.trim()),
         };
     });
     if (!fs.existsSync('./src')){ fs.mkdirSync('./src'); }
@@ -81,7 +87,7 @@ async function submit_problem(submit) {
   console.warn(`openning ${suburl} ...`);
   await page.goto(suburl);
   await page.waitForSelector('input[name="sourceFile"]');
-  await page.$eval('select[name="programTypeId"]', (el) => (el.value = "49"));
+  await page.$eval('select[name="programTypeId"]', (el) => (el.value = "75"));
   const input = await page.$('input[name="sourceFile"]');
   await input.uploadFile(file_path);
 
@@ -104,7 +110,7 @@ async function submit_problem(submit) {
     const data = await page.evaluate(() => {
         const trs = Array.from(document.querySelectorAll('table tr[data-submission-id]'));
         const data = {};
-        trs.map(tr => {
+        trs.slice(0,1).map(tr => {
             const tds = Array.from(tr.querySelectorAll('td'));
             const [id, when, _who, problem, lang, verdict, time, memory] = tds.map(td => td.textContent.trim());
             data[id] = { when, problem, lang, verdict, time, memory };
@@ -169,11 +175,11 @@ macro_rules! read_value {
     };
 }
 
-use std::str;
-use std::io::Write;
 use std::io::BufWriter;
+use std::io::Write;
+use std::str;
 
-fn run(out : &mut BufWriter<impl Write>, src: &str) {
+fn run(out: &mut BufWriter<impl Write>, src: &str) {
     input! {
         src = src,
     }
