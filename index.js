@@ -188,12 +188,12 @@ macro_rules! read_value {
 
 use std::io::BufWriter;
 use std::io::Write;
-use std::str;
+use std::str::SplitWhitespace;
 
-fn run(out: &mut BufWriter<impl Write>, src: &str) {
+fn run(out: &mut BufWriter<impl Write>, iter: &mut SplitWhitespace) {
     input! {
-        src = src,
-    }
+        iter,
+    };
     // writeln!(out, "{}", result).unwrap();
 }
 
@@ -206,7 +206,15 @@ fn main() {
         std::io::stdin().read_to_string(&mut s).unwrap();
         s
     };
-    run(&mut out, &s);
+    run_t_times(&mut out, &s);
+}
+
+fn run_t_times(out: &mut BufWriter<impl Write>, src: &str) {
+    let mut iter = src.split_whitespace();
+    input!(iter, t: usize);
+    for _ in 0..t {
+        run(out, &mut iter);
+    }
 }
 `;
 
@@ -218,13 +226,19 @@ fn main() {
 fn test_${i}() {
     let vec = Vec::new();
     let mut out = BufWriter::with_capacity(100, vec);
-    run(&mut out,
+    run_t_times(&mut out,
         "${input}"
     );
 
     let vec = out.into_inner().unwrap();
-    let result = str::from_utf8(&vec).unwrap();
-    assert_eq!(result.trim(), "${output}");
+    let result = std::str::from_utf8(&vec).unwrap();
+    assert_eq!(
+        result.trim().lines().collect::<Vec<&str>>(),
+        "${output}"
+        .trim()
+        .lines()
+        .collect::<Vec<&str>>()
+    );
 }`;
   }
 
