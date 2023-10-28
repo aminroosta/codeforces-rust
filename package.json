@@ -1,6 +1,6 @@
 {
   "name": "codeforces-rust",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "command-line-args": "^5.1.1",
-    "puppeteer": "^19.4.0",
+    "command-line-args": "^5.2.1",
+    "puppeteer": "^21.4.1",
     "readline-sync": "^1.4.10"
   },
   "bin": {
