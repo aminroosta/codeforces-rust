@@ -160,73 +160,57 @@ async function submit_problem(submit) {
 
 function write_question({ inputs, outputs, url, id }) {
   let template = `// ${url}
-macro_rules! input{
+macro_rules! output {
+    ($out:expr, $arg:expr) => { writeln!($out, "{}", $arg).unwrap(); };
+}
+macro_rules! input {
     ($iter:expr) => {};
     ($iter:expr,) => {};
-    (src = $s:expr, $($r:tt)*) => {
-        let mut iter = $s.split_whitespace();
-        input!{iter, $($r)*}
-    };
-    ($iter:expr, $var:ident : $t:tt $($r:tt)*) => {
-        let $var = read_value!($iter, $t);
-        input!{$iter $($r)*}
-    };
+    (src = $s:expr, $($r:tt)*) => { let mut iter = $s.split_whitespace(); input!{iter, $($r)*} };
+    ($iter:expr, $var:ident : $t:tt $($r:tt)*) => { let $var = read_val!($iter, $t); input!{$iter $($r)*} };
 }
-macro_rules! read_value {
-    ($iter:expr, ($($t:tt),* )) => { ( $(read_value!($iter, $t)),* ) };
-    ($iter:expr, [$t:tt;]) => { read_value!($iter, [$t; read_value!($iter, usize)]) };
-    ($iter:expr, [$t:tt;$len:expr]) => {
-        (0..$len).map(|_| read_value!($iter, $t)).collect::<Vec<_>>()
-    };
-    ($iter:expr, chars) => {
-        read_value!($iter, String).chars().collect::<Vec<char>>()
-    };
-    ($iter:expr, $t:ty) => {
-        $iter.next().unwrap().parse::<$t>().expect("Parse error")
-    };
+macro_rules! read_val {
+    ($iter:expr, ($($t:tt),* )) => { ( $(read_val!($iter, $t)),* ) };
+    ($iter:expr, [$t:tt;]) => { read_val!($iter, [$t; read_val!($iter, usize)]) };
+    ($iter:expr, [$t:tt;$len:expr]) => { (0..$len).map(|_| read_val!($iter, $t)).collect::<Vec<_>>() };
+    ($iter:expr, chars) => { read_val!($iter, String).chars().collect::<Vec<char>>() };
+    ($iter:expr, $t:ty) => { $iter.next().unwrap().parse::<$t>().expect("Parse error") };
 }
 
 use std::io::BufWriter;
 use std::io::Write;
-use std::str::SplitWhitespace;
+use std::io::Read;
 
-fn run(out: &mut BufWriter<impl Write>, iter: &mut SplitWhitespace) {
-    input! {
-        iter,
-    };
-    // writeln!(out, "{}", result).unwrap();
+fn run(out: &mut BufWriter<impl Write>, src: &str) {
+    let mut iter = src.split_whitespace();
+    input!(iter, t: usize);
+    for tc in 0..t {
+        output!(out, tc);
+    }
 }
+
 
 fn main() {
     let out = std::io::stdout();
-    let mut out = std::io::BufWriter::new(out.lock());
+    let mut out = BufWriter::new(out.lock());
     let s = {
-        use std::io::Read;
         let mut s = String::new();
         std::io::stdin().read_to_string(&mut s).unwrap();
         s
     };
-    run_t_times(&mut out, &s);
-}
-
-fn run_t_times(out: &mut BufWriter<impl Write>, src: &str) {
-    let mut iter = src.split_whitespace();
-    input!(iter, t: usize);
-    for _ in 0..t {
-        run(out, &mut iter);
-    }
+    run(&mut out, &s);
 }
 `;
 
   for (let i = 0; i < inputs.length; ++i) {
     const input = inputs[i];
-    const output = outputs[i];
+    const output = outputs[i].split('\n').map(l => l.trim()).join('\n');
     template += `
 #[test]
 fn test_${i}() {
     let vec = Vec::new();
     let mut out = BufWriter::with_capacity(100, vec);
-    run_t_times(&mut out,
+    run(&mut out,
         "${input}"
     );
 
