@@ -87,7 +87,9 @@ async function submit_problem(submit) {
   await page.$eval("#handleOrEmail", (el, v) => (el.value = v), username);
   await page.$eval("#password", (el, v) => (el.value = v), password);
   await page.click('input[type="submit"]');
+  console.warn({username, password, submited: 1});
   await page.waitForSelector(`a[href$="${username}"]`);
+  console.warn({href: 1});
   fs.writeFileSync(cred_file, JSON.stringify({ username, password }));
 
   const file_path = resolve(submit);
@@ -162,6 +164,11 @@ function write_question({ inputs, outputs, url, id }) {
   let template = `// ${url}
 macro_rules! output {
     ($out:expr, $arg:expr) => { writeln!($out, "{}", $arg).unwrap(); };
+    ($out:expr, $arg:expr,) => { output!($out, $arg); };
+    ($out:expr, $arg:expr, $($rest:expr),*) => {
+        write!($out, "{} ", $arg).unwrap();
+        output!($out, $($rest),*)
+    };
 }
 macro_rules! input {
     ($iter:expr) => {};
